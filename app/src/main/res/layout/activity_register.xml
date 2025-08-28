@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:padding="24dp"
+    tools:context=".register.RegisterActivity">
+
+    <ImageView
+        android:id="@+id/backArrow"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:src="@drawable/ic_arrow_back"
+        android:contentDescription="@string/content_description_back_button" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/appIcon"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:src="@drawable/ic_app_logo"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="@string/content_description_app_logo"/>
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/register_title"
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="32dp"/>
+
+        <EditText
+            android:id="@+id/fullNameEditText"
+            style="@style/RegisterEditTextStyle"
+            android:hint="@string/hint_full_name"
+            android:inputType="textPersonName"
+            android:autofillHints="name" />
+        <View style="@style/DividerStyle" />
+
+        <EditText
+            android:id="@+id/emailEditText"
+            style="@style/RegisterEditTextStyle"
+            android:hint="@string/hint_email"
+            android:inputType="textEmailAddress"
+            android:autofillHints="emailAddress" />
+        <View style="@style/DividerStyle" />
+
+        <EditText
+            android:id="@+id/phoneEditText"
+            style="@style/RegisterEditTextStyle"
+            android:hint="@string/hint_phone_number"
+            android:inputType="phone"
+            android:autofillHints="phone" />
+        <View style="@style/DividerStyle" />
+
+        <EditText
+            android:id="@+id/passwordEditText"
+            style="@style/RegisterEditTextStyle"
+            android:hint="@string/hint_password"
+            android:inputType="textPassword"
+            android:autofillHints="newPassword" />
+        <View style="@style/DividerStyle" />
+
+        <EditText
+            android:id="@+id/confirmPasswordEditText"
+            style="@style/RegisterEditTextStyle"
+            android:hint="@string/hint_confirm_password"
+            android:inputType="textPassword"
+            android:autofillHints="newPassword"
+            android:layout_marginBottom="32dp"/>
+        <View
+            style="@style/DividerStyle"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/signUpButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="@string/button_sign_up"
+            android:backgroundTint="@color/colorPrimary"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            app:cornerRadius="8dp"
+            android:layout_marginBottom="24dp"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/alreadyHaveAccountText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/text_already_have_account"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"/>
+
+        <TextView
+            android:id="@+id/loginText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/text_log_in"
+            android:textColor="@color/colorPrimary"
+            android:textStyle="bold"
+            android:textSize="16sp"/>
+    </LinearLayout>
+
+</RelativeLayout>
