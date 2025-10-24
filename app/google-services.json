@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "93082356742",
+    "firebase_url": "https://bantaybahay-be020-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "bantaybahay-be020",
+    "storage_bucket": "bantaybahay-be020.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:93082356742:android:3cbf73917f8c395a708787",
+        "android_client_info": {
+          "package_name": "com.example.bantaybahay"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "93082356742-cfflbu53ip4mtan6epbnguobfqjbmro3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.bantaybahay",
+            "certificate_hash": "6b3806ccb94b0c2f587ac026f2d0fdb9160ccb01"
+          }
+        },
+        {
+          "client_id": "93082356742-3sllspdurrmqui7ahk56pdogc53i02c3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAX_etsZGD6M6d3OzWfRpz_yu2UYUW0TTY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "93082356742-3sllspdurrmqui7ahk56pdogc53i02c3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
