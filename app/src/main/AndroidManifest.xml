@@ -59,6 +59,9 @@
         <activity
             android:name=".Login.LoginActivity"
             android:exported="false" />
+        <activity
+            android:name=".AddDevice.AddDeviceActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
