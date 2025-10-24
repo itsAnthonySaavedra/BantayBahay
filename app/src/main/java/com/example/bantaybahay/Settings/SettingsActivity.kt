@@ -1,10 +1,12 @@
 package com.example.bantaybahay.Settings
+
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
+import com.example.bantaybahay.AddDevice.AddDeviceActivity // <-- ADDED THIS IMPORT
 import com.example.bantaybahay.ChangePassword.ChangePasswordActivity
 import com.example.bantaybahay.Dashboard.DashboardActivity
 import com.example.bantaybahay.Login.LoginActivity
@@ -89,9 +91,8 @@ class SettingsActivity : Activity(), ISettingsView {
     }
 
     override fun navigateToAddDevice() {
-        // Navigate to add device screen
-        Toast.makeText(this, "Navigate to Add Device", Toast.LENGTH_SHORT).show()
-        // startActivity(Intent(this, AddDeviceActivity::class.java))
+        // This is the updated function that opens your new screen
+        startActivity(Intent(this, AddDeviceActivity::class.java))
     }
 
     override fun navigateToRemoveDevice() {
