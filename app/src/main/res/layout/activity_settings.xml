@@ -8,7 +8,6 @@
     android:background="#F5F5F5"
     tools:context=".Settings.SettingsActivity">
 
-    <!-- Blue header bar -->
     <View
         android:id="@+id/header"
         android:layout_width="0dp"
@@ -18,7 +17,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Settings Title (white text on blue header) -->
     <TextView
         android:id="@+id/settingsTitleHeader"
         android:layout_width="wrap_content"
@@ -32,7 +30,6 @@
         app:layout_constraintBottom_toBottomOf="@id/header"
         app:layout_constraintStart_toStartOf="parent"/>
 
-    <!-- ScrollView for content -->
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -48,7 +45,6 @@
             android:orientation="vertical"
             android:paddingBottom="16dp">
 
-            <!-- Devices section label -->
             <TextView
                 android:id="@+id/tvDevices"
                 android:layout_width="wrap_content"
@@ -61,92 +57,26 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginBottom="8dp"/>
 
-            <!-- Device item card -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/devicesRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/tvNoDevices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No devices found. Tap 'Add Device' to claim one."
+                android:textAlignment="center"
+                android:padding="16dp"
+                android:visibility="gone"/>
+
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:layout_marginBottom="2dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp"
-                android:backgroundTint="@android:color/white">
-
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/deviceRow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:background="?attr/selectableItemBackground">
-
-                    <ImageView
-                        android:id="@+id/deviceIcon"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/door_icon"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent"/>
-
-                    <LinearLayout
-                        android:id="@+id/deviceInfo"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginStart="12dp"
-                        app:layout_constraintStart_toEndOf="@id/deviceIcon"
-                        app:layout_constraintEnd_toStartOf="@id/statusIndicator"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Door Sensor #1"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:textColor="@android:color/black"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Online"
-                            android:textSize="12sp"
-                            android:textColor="#999999"/>
-                    </LinearLayout>
-
-                    <!-- Circular green status indicator -->
-                    <View
-                        android:id="@+id/statusIndicator"
-                        android:layout_width="10dp"
-                        android:layout_height="10dp"
-                        android:background="@drawable/circle_shape"
-                        android:backgroundTint="#4CAF50"
-                        android:layout_marginEnd="12dp"
-                        app:layout_constraintEnd_toStartOf="@id/chevronDevice"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent"/>
-
-                    <ImageView
-                        android:id="@+id/chevronDevice"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:src="@drawable/right_icon"
-                        app:tint="#CCCCCC"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent"/>
-                </androidx.constraintlayout.widget.ConstraintLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Add Device -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
+                android:layout_marginTop="8dp"
                 android:layout_marginBottom="2dp"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="2dp"
@@ -195,7 +125,6 @@
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Remove/Reset Device -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -248,7 +177,6 @@
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Account section label -->
             <TextView
                 android:id="@+id/tvAccount"
                 android:layout_width="wrap_content"
@@ -261,7 +189,6 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginBottom="8dp"/>
 
-            <!-- Profile row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -315,7 +242,6 @@
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Change Password row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -369,7 +295,6 @@
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Logout row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -425,7 +350,6 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Bottom Navigation View -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigationView"
         android:layout_width="0dp"

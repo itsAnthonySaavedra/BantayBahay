@@ -1,11 +1,15 @@
 package com.example.bantaybahay.Dashboard
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class DashboardPresenter(
     private val dashboardRepository: DashboardRepository
 ) : IDashboardPresenter {
 
     private var view: IDashboardView? = null
+    private val presenterScope = CoroutineScope(Dispatchers.Main)
 
     override fun attachView(view: IDashboardView) {
         this.view = view
@@ -41,29 +45,33 @@ class DashboardPresenter(
 
     override fun armSystem() {
         view?.showProgress()
-        dashboardRepository.sendArmCommand(
-            onSuccess = {
-                view?.setSystemStatus("System Armed")
-                view?.hideProgress()
-            },
-            onFailure = { errorMessage ->
-                view?.showError(errorMessage)
-                view?.hideProgress()
-            }
-        )
+        presenterScope.launch {
+            dashboardRepository.sendArmCommand(
+                onSuccess = {
+                    // The real-time listener in getDeviceStatus will handle the UI update
+                    view?.hideProgress()
+                },
+                onFailure = { errorMessage ->
+                    view?.showError(errorMessage)
+                    view?.hideProgress()
+                }
+            )
+        }
     }
 
     override fun disarmSystem() {
         view?.showProgress()
-        dashboardRepository.sendDisarmCommand(
-            onSuccess = {
-                view?.setSystemStatus("System Disarmed")
-                view?.hideProgress()
-            },
-            onFailure = { errorMessage ->
-                view?.showError(errorMessage)
-                view?.hideProgress()
-            }
-        )
+        presenterScope.launch {
+            dashboardRepository.sendDisarmCommand(
+                onSuccess = {
+                    // The real-time listener will handle the UI update
+                    view?.hideProgress()
+                },
+                onFailure = { errorMessage ->
+                    view?.showError(errorMessage)
+                    view?.hideProgress()
+                }
+            )
+        }
     }
 }

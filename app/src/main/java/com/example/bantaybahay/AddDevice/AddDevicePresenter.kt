@@ -14,27 +14,33 @@ class AddDevicePresenter(private val repository: AddDeviceRepository) {
     }
 
     fun detachView() {
-        if (listener != null) {
-            unclaimedDevicesRef.removeEventListener(listener!!)
+        listener?.let {
+            unclaimedDevicesRef.removeEventListener(it)
         }
         this.view = null
     }
 
     fun startDeviceSearch() {
-        view?.showLoading("Searching for new device...\n(Power on the ESP32 now)")
+        view?.showLoading("Searching for unclaimed device in Firebase...")
 
-        listener = object : ValueEventListener {
+        // This listener looks for any device in the "unclaimed_devices" node.
+        val searchListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists() && snapshot.hasChildren()) {
-                    val deviceNode = snapshot.children.first()
-                    val deviceId = deviceNode.key
+                    // Find the first device that isn't the placeholder
+                    val deviceNode = snapshot.children.firstOrNull { it.key != "placeholder" }
+                    val deviceId = deviceNode?.key
                     val currentUser = FirebaseAuth.getInstance().currentUser
 
-                    if (deviceId != null && deviceId != "placeholder" && currentUser != null) {
-                        // Stop listening once we find a device
-                        unclaimedDevicesRef.removeEventListener(listener!!)
+                    if (deviceId != null && currentUser != null) {
                         claimDevice(deviceId, currentUser.uid)
+                    } else {
+                        view?.hideLoading()
+                        view?.showClaimingError("No new unclaimed devices found. Please add one manually to Firebase.")
                     }
+                } else {
+                    view?.hideLoading()
+                    view?.showClaimingError("No unclaimed devices found.")
                 }
             }
 
@@ -43,11 +49,12 @@ class AddDevicePresenter(private val repository: AddDeviceRepository) {
                 view?.showClaimingError(error.message)
             }
         }
-        unclaimedDevicesRef.addValueEventListener(listener!!)
+        // Use addListenerForSingleValueEvent to search just once when the button is clicked.
+        unclaimedDevicesRef.addListenerForSingleValueEvent(searchListener)
     }
 
     private fun claimDevice(deviceId: String, userId: String) {
-        view?.showLoading("Claiming device '$deviceId'...")
+        view?.showLoading("Found device '$deviceId'. Claiming...")
 
         repository.claimDevice(deviceId, userId,
             onSuccess = {
