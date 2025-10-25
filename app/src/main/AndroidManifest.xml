@@ -48,6 +48,12 @@
             android:name=".Settings.SettingsActivity"
             android:exported="false" /> <!-- Details Activity -->
         <activity
+            android:name=".DeviceDetails.DeviceDetailsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AllEvents.AllEventsActivity"
+            android:exported="false" />
+        <activity
             android:name=".Detail.DetailsActivity"
             android:exported="false" /> <!-- Dashboard Activity -->
         <activity
