@@ -12,36 +12,42 @@ import com.google.android.material.textfield.TextInputEditText
 class AddDeviceActivity : Activity(), IAddDeviceView {
 
     private lateinit var presenter: AddDevicePresenter
-    private lateinit var repository: AddDeviceRepository
+    private lateinit var loadingDialog: LoadingDialog
 
     private lateinit var btnConnect: Button
-    private lateinit var loadingDialog: LoadingDialog
     private lateinit var backArrow: ImageView
+    private lateinit var etDeviceId: TextInputEditText
     private lateinit var etSsid: TextInputEditText
     private lateinit var etPassword: TextInputEditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Ensure you are using the original layout with SSID/Password fields
         setContentView(R.layout.activity_add_device)
 
-        repository = AddDeviceRepository()
-        presenter = AddDevicePresenter(repository)
+        presenter = AddDevicePresenter(AddDeviceRepository())
         presenter.attachView(this)
 
-        // Initialize UI
-        btnConnect = findViewById(R.id.btnConnectDevice)
         loadingDialog = LoadingDialog(this)
-        backArrow = findViewById(R.id.backArrow) // Assuming you added a back arrow
+
+        // UI References
+        btnConnect = findViewById(R.id.btnConnectDevice)
+        backArrow = findViewById(R.id.backArrow)
+        etDeviceId = findViewById(R.id.etDeviceId)
         etSsid = findViewById(R.id.etWifiSsid)
         etPassword = findViewById(R.id.etWifiPassword)
 
-        // --- SIMULATION LOGIC ---
+        // Connect button
         btnConnect.setOnClickListener {
-            // In a real scenario, you would connect to the hotspot and send SSID/password.
-            // For our simulation, we IGNORE the text fields and immediately search Firebase.
-            Toast.makeText(this, "SIMULATION: Ignoring WiFi fields, searching Firebase directly.", Toast.LENGTH_LONG).show()
-            presenter.startDeviceSearch()
+            val deviceId = etDeviceId.text.toString().trim()
+            val ssid = etSsid.text.toString().trim()
+            val password = etPassword.text.toString().trim()
+
+            if (deviceId.isEmpty() || ssid.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill in all fields.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+
+            presenter.pairDevice(deviceId, ssid, password)
         }
 
         backArrow.setOnClickListener {
@@ -54,6 +60,8 @@ class AddDeviceActivity : Activity(), IAddDeviceView {
         presenter.detachView()
     }
 
+    // --- IAddDeviceView IMPLEMENTATION ---
+
     override fun showLoading(message: String) {
         loadingDialog.show(message)
     }
@@ -63,7 +71,7 @@ class AddDeviceActivity : Activity(), IAddDeviceView {
     }
 
     override fun onDeviceClaimed(deviceId: String) {
-        Toast.makeText(this, "Device '$deviceId' claimed successfully!", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Device '$deviceId' paired successfully!", Toast.LENGTH_LONG).show()
         finish()
     }
 

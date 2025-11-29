@@ -4,29 +4,33 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class AllEventsPresenter(private val repository: AllEventsRepository) {
-    private var view: IAllEventsView? = null
-    private val presenterScope = CoroutineScope(Dispatchers.Main)
+class AllEventsPresenter(
+    private val view: AllEventsView,
+    private val repository: AllEventsRepository = AllEventsRepository()
+) : AllEventsRepository.LogsListener {
 
-    fun attachView(view: IAllEventsView) {
-        this.view = view
+    fun loadEvents() {
+        view.showLoading()
+        repository.getAllLogs(this)
     }
 
-    fun detachView() {
-        this.view = null
-    }
+    override fun onLogsLoaded(logs: Map<String, String>) {
+        view.hideLoading()
 
-    fun loadAllEvents() {
-        view?.showLoading()
-        presenterScope.launch {
-            repository.getAllUserEvents { events ->
-                view?.hideLoading()
-                if (events.isNotEmpty()) {
-                    view?.displayEvents(events)
-                } else {
-                    view?.showEmptyState()
-                }
-            }
+        if (logs.isEmpty()) {
+            view.showNoEvents()
+            return
         }
+
+        val sorted = logs.entries
+            .sortedByDescending { it.key }        // newest → oldest
+            .map { it.toPair() }                  // convert to List<Pair>
+
+        view.showAllEvents(sorted)
+    }
+
+    override fun onError(message: String) {
+        view.hideLoading()
+        view.showError(message)
     }
 }

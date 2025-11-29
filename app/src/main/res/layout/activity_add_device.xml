@@ -37,6 +37,21 @@
             android:textSize="28sp"
             android:textStyle="bold" />
 
+        <!-- 🌟 NEW: DEVICE ID FIELD -->
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:hint="Device ID (e.g. esp32-01)">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etDeviceId"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- WiFi SSID -->
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
@@ -50,6 +65,7 @@
                 android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- WiFi Password -->
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
@@ -65,6 +81,7 @@
                 android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- CONNECT BUTTON -->
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnConnectDevice"
             android:layout_width="match_parent"

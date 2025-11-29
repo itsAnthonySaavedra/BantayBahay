@@ -1,9 +1,9 @@
 package com.example.bantaybahay.Dashboard
 
-interface IDashboardView {
-    fun showProgress()
-    fun hideProgress()
-    fun setSystemStatus(status: String)
-    fun showRecentEvents(events: List<Event>)
+interface DashboardView {
+    fun updateSensorStatus(status: String)
+    fun showSensorLogs(logs: Map<String, String>)
+    fun showDisarmedState()
+    fun updateArmedState(isArmed: Boolean)
     fun showError(message: String)
 }

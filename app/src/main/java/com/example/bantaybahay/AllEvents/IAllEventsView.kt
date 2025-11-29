@@ -1,9 +1,9 @@
 package com.example.bantaybahay.AllEvents
 
-interface IAllEventsView {
+interface AllEventsView {
+    fun showAllEvents(logs: List<Pair<String, String>>)
     fun showLoading()
     fun hideLoading()
-    fun displayEvents(events: List<TitledEvent>)
-    fun showEmptyState()
+    fun showNoEvents()
     fun showError(message: String)
 }

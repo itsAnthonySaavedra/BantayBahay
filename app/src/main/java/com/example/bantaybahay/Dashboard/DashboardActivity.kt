@@ -1,93 +1,152 @@
 package com.example.bantaybahay.Dashboard
-import android.app.Activity
+
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.Button
-import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.ImageView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatButton
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.bantaybahay.AllEvents.AllEventsActivity
-import com.example.bantaybahay.Dashboard.Adapters.RecentActivityAdapter
 import com.example.bantaybahay.R
+import androidx.cardview.widget.CardView
+import androidx.recyclerview.widget.RecyclerView
+import com.example.bantaybahay.Adapters.SensorLogAdapter
+import com.example.bantaybahay.AllEvents.AllEventsActivity
+import com.example.bantaybahay.Notifications.NotificationPresenter
+import com.example.bantaybahay.Notifications.NotificationView
 import com.example.bantaybahay.Settings.SettingsActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
-class DashboardActivity : Activity(), IDashboardView {
 
-    private lateinit var presenter: IDashboardPresenter
-    private lateinit var dashboardRepository: DashboardRepository
-    private lateinit var statusTextView: TextView
-    private lateinit var actionButton: Button
-    private lateinit var progressBar: ProgressBar
-    private lateinit var recentEventsList: RecyclerView
-    private lateinit var noEventsTextView: TextView
+class DashboardActivity : AppCompatActivity(), DashboardView {
+
+
+    private lateinit var presenter: DashboardPresenter
+    private lateinit var statusTitle: TextView
+    private lateinit var statusSubtitle: TextView
+    private lateinit var statusCard: CardView
+    private lateinit var statusIcon: ImageView
+    private lateinit var activityList: RecyclerView
+    private lateinit var adapter: SensorLogAdapter
+    private lateinit var actionButton: AppCompatButton
+
+    private var isArmed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard)
 
-        dashboardRepository = DashboardRepository()
-        presenter = DashboardPresenter(dashboardRepository)
-        presenter.attachView(this)
+        statusTitle = findViewById(R.id.statusTitle)
+        statusSubtitle = findViewById(R.id.statusSubtitle)
+        statusCard = findViewById(R.id.statusCard)
+        statusIcon = findViewById(R.id.statusIcon)
+        activityList = findViewById(R.id.activityList)
 
-        statusTextView = findViewById(R.id.statusTitle)
         actionButton = findViewById(R.id.actionButton)
-        progressBar = findViewById(R.id.progressBar)
-        recentEventsList = findViewById(R.id.activityList)
-        noEventsTextView = findViewById(R.id.noEventsText)
 
         actionButton.setOnClickListener {
-            if (statusTextView.text.toString() == "System Armed") {
-                presenter.disarmSystem()
+            val newArmedState = !isArmed    // toggle armed/disarmed
+            presenter.setArmedState(newArmedState)
+
+            if (newArmedState) {
+                Toast.makeText(this, "System Armed", Toast.LENGTH_SHORT).show()
             } else {
-                presenter.armSystem()
+                Toast.makeText(this, "System Disarmed", Toast.LENGTH_SHORT).show()
             }
         }
 
-        presenter.loadDashboardData()
+        adapter = SensorLogAdapter()
+        activityList.layoutManager = LinearLayoutManager(this)
+        activityList.adapter = adapter
 
-        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
-        bottomNavigationView.selectedItemId = R.id.navigation_home
-        bottomNavigationView.setOnItemSelectedListener { item ->
+        presenter = DashboardPresenter(this)
+        presenter.startListening()
+
+        val notifPresenter = NotificationPresenter(object : NotificationView {
+            override fun onTokenRegistered() {
+                println("FCM Token saved to Firebase")
+            }
+
+            override fun onTokenRegistrationFailed() {
+                println("Failed to register FCM token")
+            }
+        })
+        notifPresenter.registerDeviceForNotifications()
+
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
+        bottomNav.selectedItemId = R.id.navigation_home
+
+        bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navigation_home -> true // Already here
+                R.id.navigation_home -> true // already here
+
                 R.id.navigation_activity -> {
                     startActivity(Intent(this, AllEventsActivity::class.java))
-                    finish()
-                    overridePendingTransition(0, 0) // No animation
                     true
                 }
+
                 R.id.navigation_settings -> {
                     startActivity(Intent(this, SettingsActivity::class.java))
-                    finish()
-                    overridePendingTransition(0, 0) // No animation
                     true
                 }
+
                 else -> false
             }
         }
     }
 
-    override fun onDestroy() { super.onDestroy(); presenter.detachView() }
-    override fun showProgress() { progressBar.visibility = View.VISIBLE }
-    override fun hideProgress() { progressBar.visibility = View.GONE }
-    override fun setSystemStatus(status: String) {
-        statusTextView.text = status
-        actionButton.text = if (status == "System Armed") "Disarm" else "Arm"
-    }
-    override fun showRecentEvents(events: List<Event>) {
-        if (events.isEmpty()) {
-            noEventsTextView.visibility = View.VISIBLE
-            recentEventsList.visibility = View.GONE
-        } else {
-            noEventsTextView.visibility = View.GONE
-            recentEventsList.visibility = View.VISIBLE
-            recentEventsList.layoutManager = LinearLayoutManager(this)
-            recentEventsList.adapter = RecentActivityAdapter(events)
+    override fun updateSensorStatus(status: String) {
+        runOnUiThread {
+            if (status.equals("Open", ignoreCase = true)) {
+                statusTitle.text = "Door Open"
+                statusSubtitle.text = "Door is currently open"
+                statusCard.setCardBackgroundColor(getColor(R.color.red_500))
+            } else if (status.equals("Closed", ignoreCase = true)) {
+                statusTitle.text = "Door Closed"
+                statusSubtitle.text = "Your door is secure"
+                statusCard.setCardBackgroundColor(getColor(R.color.green_500))
+            } else {
+                statusTitle.text = "Unknown"
+                statusSubtitle.text = "Status unavailable"
+                statusCard.setCardBackgroundColor(getColor(R.color.gray_500))
+            }
         }
     }
-    override fun showError(message: String) { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
+    override fun updateArmedState(isArmedValue: Boolean) {
+        isArmed = isArmedValue
+
+        if (isArmed) {
+            actionButton.text = "Disarm"
+            actionButton.setBackgroundColor(getColor(R.color.red_500))   // GREEN WHEN ARMED
+        } else {
+            actionButton.text = "Arm"
+            actionButton.setBackgroundColor(getColor(R.color.green_500))    // GRAY WHEN DISARMED
+        }
+    }
+    // for disarm to be grey
+    override fun showDisarmedState() {
+        runOnUiThread {
+            statusTitle.text = "System Disarmed"
+            statusSubtitle.text = "Door Sensor is Offline"
+            statusCard.setCardBackgroundColor(getColor(R.color.gray_500))
+        }
+    }
+
+    override fun showSensorLogs(logs: Map<String, String>) {
+        runOnUiThread {
+            val sorted = logs.entries
+                .sortedByDescending { it.key }
+                .take(10)
+
+            adapter.setLogs(sorted.map { it.toPair() })
+        }
+    }
+
+    override fun showError(message: String) {
+        runOnUiThread {
+            Toast.makeText(this, "Firebase error: $message", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 }

@@ -138,7 +138,6 @@ class SettingsActivity : Activity(), ISettingsView {
             .setNegativeButton("Cancel", null)
             .show()
     }
-
     private fun setupBottomNavigation() {
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
         bottomNavigationView.selectedItemId = R.id.navigation_settings

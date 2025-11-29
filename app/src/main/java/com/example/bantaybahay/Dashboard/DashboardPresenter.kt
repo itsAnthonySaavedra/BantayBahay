@@ -1,77 +1,54 @@
 package com.example.bantaybahay.Dashboard
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-
 class DashboardPresenter(
-    private val dashboardRepository: DashboardRepository
-) : IDashboardPresenter {
+    private val view: DashboardView,
+    private val repository: DashboardRepository = DashboardRepository()
+) : DashboardRepository.SensorListener {
 
-    private var view: IDashboardView? = null
-    private val presenterScope = CoroutineScope(Dispatchers.Main)
+    private var lastStatus: String = "Unknown"
+    private var isArmed: Boolean = false
 
-    override fun attachView(view: IDashboardView) {
-        this.view = view
+    fun startListening() {
+        repository.listenToSensorData(this)
     }
 
-    override fun detachView() {
-        this.view = null
+    override fun onStatusChanged(status: String) {
+        lastStatus = status
+        updateUI()
     }
 
-    override fun loadDashboardData() {
-        view?.showProgress()
-        dashboardRepository.getDeviceStatus(
-            onSuccess = { status ->
-                view?.setSystemStatus(status)
-                // Once status is loaded, load events
-                dashboardRepository.getRecentEvents(
-                    onSuccess = { events ->
-                        view?.showRecentEvents(events)
-                        view?.hideProgress()
-                    },
-                    onFailure = { errorMessage ->
-                        view?.showError(errorMessage)
-                        view?.hideProgress()
-                    }
-                )
-            },
-            onFailure = { errorMessage ->
-                view?.showError(errorMessage)
-                view?.hideProgress()
-            }
-        )
+    override fun onLogsUpdated(logs: Map<String, String>) {
+
+        // LIMIT TO 10 MOST RECENT LOGS
+        val limitedLogs = logs
+            .entries
+            .sortedByDescending { it.key }   // newest first
+            .take(10)                         // keep only 10
+            .associate { it.toPair() }        // convert back to Map
+
+        view.showSensorLogs(limitedLogs)
     }
 
-    override fun armSystem() {
-        view?.showProgress()
-        presenterScope.launch {
-            dashboardRepository.sendArmCommand(
-                onSuccess = {
-                    // The real-time listener in getDeviceStatus will handle the UI update
-                    view?.hideProgress()
-                },
-                onFailure = { errorMessage ->
-                    view?.showError(errorMessage)
-                    view?.hideProgress()
-                }
-            )
+    override fun onArmedChanged(isArmedValue: Boolean) {
+        isArmed = isArmedValue
+        view.updateArmedState(isArmed)
+        updateUI()
+    }
+
+    override fun onError(message: String) {
+        view.showError(message)
+    }
+
+    private fun updateUI() {
+        if (!isArmed) {
+            view.showDisarmedState()
+        } else {
+            view.updateSensorStatus(lastStatus)
         }
     }
 
-    override fun disarmSystem() {
-        view?.showProgress()
-        presenterScope.launch {
-            dashboardRepository.sendDisarmCommand(
-                onSuccess = {
-                    // The real-time listener will handle the UI update
-                    view?.hideProgress()
-                },
-                onFailure = { errorMessage ->
-                    view?.showError(errorMessage)
-                    view?.hideProgress()
-                }
-            )
-        }
+    fun setArmedState(armed: Boolean) {
+        repository.setArmed(armed)
     }
+
 }
