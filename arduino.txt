@@ -1,0 +1,325 @@
+/*
+  ESP32 BantayBahay Pairing Firmware (FINAL CODE-ONLY FIX)
+  ✨ Bypass library limitations by manually exchanging tokens
+  ✨ No library file editing required
+  ✨ Compiles on default settings
+*/
+
+#include <WiFi.h>
+#include <WebServer.h>
+#include <SPIFFS.h>
+#include <WiFiClientSecure.h>
+
+// Ensure you have "Firebase ESP32 Client" (Mobizt) and "ArduinoJson" (v6) installed
+#include <Firebase_ESP_Client.h>
+#include "addons/TokenHelper.h"
+#include "addons/RTDBHelper.h"
+
+#include <ArduinoJson.h>
+#include <time.h>
+
+// -------------------------------------------------------------------
+// 🔥 FIREBASE CONFIG
+// -------------------------------------------------------------------
+#define API_KEY "AIzaSyCUD9ZbAWxGmbDJmmFnP-5kxNSn7uuAaSI"
+#define DATABASE_URL "https://bantaybahay-be020-default-rtdb.asia-southeast1.firebasedatabase.app/"
+
+// -------------------------------------------------------------------
+// 🔌 SENSOR CONFIG
+// -------------------------------------------------------------------
+const int reedPin = 22;
+
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+
+bool firebaseReady = false;
+String currentIdToken = "";
+
+String savedDeviceId = "";
+String savedCustomToken = "";
+String savedSsid = "";
+String savedPass = "";
+
+// -------------------------------------------------------------------
+// 🔧 MANUAL TOKEN EXCHANGE (Bypasses library restriction)
+// -------------------------------------------------------------------
+String exchangeCustomToken(String customToken) {
+  WiFiClientSecure client;
+  client.setInsecure(); // Skip SSL certificate check
+
+  const char* host = "identitytoolkit.googleapis.com";
+  const int httpsPort = 443;
+
+  if (!client.connect(host, httpsPort)) {
+    Serial.println("Google API Connection Failed");
+    return "";
+  }
+
+  String url = "/v1/accounts:signInWithCustomToken?key=" + String(API_KEY);
+  
+  // Create JSON Payload
+  StaticJsonDocument<3072> reqDoc;
+  reqDoc["token"] = customToken;
+  reqDoc["returnSecureToken"] = true;
+  String body;
+  serializeJson(reqDoc, body);
+
+  // Send POST Request
+  client.println("POST " + url + " HTTP/1.1");
+  client.println("Host: " + String(host));
+  client.println("Content-Type: application/json");
+  client.println("Content-Length: " + String(body.length()));
+  client.println();
+  client.print(body);
+
+  // Wait for response
+  unsigned long timeout = millis();
+  while (client.connected() && !client.available()) {
+    if (millis() - timeout > 5000) return "";
+    delay(10);
+  }
+
+  // Skip headers
+  bool jsonStarted = false;
+  String jsonResponse = "";
+  while (client.available()) {
+    char c = client.read();
+    if (c == '{') jsonStarted = true;
+    if (jsonStarted) jsonResponse += c;
+  }
+
+  // Parse ID Token
+  StaticJsonDocument<1024> resDoc;
+  deserializeJson(resDoc, jsonResponse);
+  
+  const char* idToken = resDoc["idToken"];
+  if (idToken) {
+    return String(idToken);
+  } else {
+    Serial.println("Token Exchange Error: " + jsonResponse);
+    return "";
+  }
+}
+
+// -------------------------------------------------------------------
+// 📡 AP MODE CONFIG
+// -------------------------------------------------------------------
+WebServer server(80);
+String apSSID;
+const char* apPass = "pairme123";
+const char* CONFIG_FILE = "/device_demo.json";
+
+// -------------------------------------------------------------------
+// 📁 Save/Load Config
+// -------------------------------------------------------------------
+bool saveConfig(String id, String token, String ssid, String pass) {
+  StaticJsonDocument<2048> doc;
+  doc["deviceId"] = id;
+  doc["token"] = token;
+  doc["ssid"]  = ssid;
+  doc["password"] = pass;
+
+  File f = SPIFFS.open(CONFIG_FILE, FILE_WRITE);
+  if (!f) return false;
+  serializeJson(doc, f);
+  f.close();
+  return true;
+}
+
+bool loadConfig() {
+  if (!SPIFFS.exists(CONFIG_FILE)) return false;
+  File f = SPIFFS.open(CONFIG_FILE, FILE_READ);
+  StaticJsonDocument<2048> doc;
+  if (deserializeJson(doc, f)) { f.close(); return false; }
+  f.close();
+
+  savedDeviceId = doc["deviceId"].as<String>();
+  savedCustomToken = doc["token"].as<String>();
+  savedSsid = doc["ssid"].as<String>();
+  savedPass = doc["password"].as<String>();
+  return true;
+}
+
+// -------------------------------------------------------------------
+// 🌐 Setup WiFi
+// -------------------------------------------------------------------
+bool connectToWiFi(String ssid, String pass) {
+  Serial.println("Connecting to WiFi...");
+  Serial.println("SSID: [" + ssid + "]");
+  Serial.println("Pass: [" + pass + "]");
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid.c_str(), pass.c_str());
+  int attempt = 0;
+  while (WiFi.status() != WL_CONNECTED && attempt < 40) { // Increased timeout to 40
+    delay(500); Serial.print("."); attempt++;
+  }
+  Serial.println();
+  
+  if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("WiFi Connected!");
+      Serial.println("IP: " + WiFi.localIP().toString());
+      return true;
+  } else {
+      Serial.println("WiFi Connection FAILED (Timeout)");
+      return false;
+  }
+}
+
+// -------------------------------------------------------------------
+// 🔥 Initialize Firebase (Using Manual Token)
+// -------------------------------------------------------------------
+bool initFirebase(String deviceId, String customToken) {
+  Serial.println("Exchanging Token...");
+  currentIdToken = exchangeCustomToken(customToken);
+
+  if (currentIdToken == "") return false;
+
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+  
+  // FIX: Use legacy_token slot for manual ID token to avoid compilation errors
+  config.signer.tokens.legacy_token = currentIdToken.c_str();
+
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+  
+  // Wait for readiness
+  unsigned long start = millis();
+  while (!Firebase.ready() && millis() - start < 5000) delay(100);
+
+  if (Firebase.ready()) {
+    Serial.println("Firebase Ready!");
+    return true;
+  }
+  return false;
+}
+
+// -------------------------------------------------------------------
+// 🛜 AP Endpoints
+// -------------------------------------------------------------------
+void handlePair() {
+  Serial.println("Received pairing request!"); // DEBUG
+  
+  if (server.method() != HTTP_POST) {
+    Serial.println("Error: Not POST method");
+    server.send(405, "application/json", "{\"status\":\"bad_method\"}");
+    return;
+  }
+  String body = server.arg("plain");
+  Serial.println("Body: " + body); // DEBUG
+
+  StaticJsonDocument<2048> doc;
+  if (deserializeJson(doc, body)) {
+    Serial.println("Error: JSON parsing failed");
+    server.send(400, "application/json", "{\"status\":\"bad_json\"}");
+    return;
+  }
+
+  String id = doc["deviceId"];
+  String tilde = doc["token"];
+  String s = doc["ssid"];
+  String p = doc["password"];
+
+  if (saveConfig(id, tilde, s, p)) {
+    server.send(200, "application/json", "{\"status\":\"ok\"}");
+    delay(500);
+    ESP.restart();
+  } else {
+    server.send(500, "application/json", "{\"status\":\"save_fail\"}");
+  }
+}
+
+void startAP() {
+  uint64_t chipid = ESP.getEfuseMac();
+  apSSID = "ESP32-" + String((uint32_t)chipid, HEX);
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(apSSID.c_str(), apPass);
+  Serial.println("AP: " + apSSID);
+  Serial.println(WiFi.softAPIP());
+  server.on("/pair", HTTP_POST, handlePair);
+  server.begin();
+}
+
+// -------------------------------------------------------------------
+// 🕒 Time
+// -------------------------------------------------------------------
+void initTime() { configTime(28800, 0, "pool.ntp.org"); }
+String getTimeString() {
+  time_t now = time(nullptr);
+  struct tm *timeinfo = localtime(&now);
+  if (timeinfo->tm_year < 120) return "Time not set";
+  char buffer[25];
+  strftime(buffer, 25, "%Y-%m-%d_%H-%M-%S", timeinfo);
+  return String(buffer);
+}
+
+// -------------------------------------------------------------------
+// 🔥 Send Logic
+// -------------------------------------------------------------------
+void sendState(String state) {
+  // Re-auth if needed (simple token refresh check could go here)
+  if (!Firebase.ready()) {
+     initFirebase(savedDeviceId, savedCustomToken);
+  }
+
+  String ts = getTimeString();
+  if (ts == "Time not set") return;
+
+  Firebase.RTDB.setString(&fbdo, "/devices/" + savedDeviceId + "/door_status", state);
+  Firebase.RTDB.setString(&fbdo, "/devices/" + savedDeviceId + "/logs/" + ts, state);
+  Firebase.RTDB.setString(&fbdo, "/events/" + savedDeviceId + "/" + ts, state);
+  Serial.println("Sent: " + state);
+}
+
+// -------------------------------------------------------------------
+// MAIN
+// -------------------------------------------------------------------
+void setup() {
+  Serial.begin(115200);
+  pinMode(reedPin, INPUT_PULLUP);
+  SPIFFS.begin(true);
+  initTime();
+
+  if (loadConfig()) {
+    Serial.println("Config Loaded. Connecting...");
+    if (connectToWiFi(savedSsid, savedPass)) {
+      if (initFirebase(savedDeviceId, savedCustomToken)) {
+        firebaseReady = true;
+      }
+    }
+  }
+
+  if (!firebaseReady) {
+    Serial.println("Connection failed. Starting AP.");
+    startAP();
+  }
+}
+
+String lastState = "";
+unsigned long lastTime = 0;
+
+void loop() {
+  if (!firebaseReady) {
+    server.handleClient();
+    delay(2);
+    return;
+  }
+
+  if (millis() - lastTime > 300) {
+    lastTime = millis();
+    String currentState = (digitalRead(reedPin) == LOW) ? "Closed" : "Open";
+
+    // Check Armed
+    bool armed = false;
+    if (Firebase.RTDB.getString(&fbdo, "/devices/" + savedDeviceId + "/door_command")) {
+      if (fbdo.stringData() == "ARM") armed = true;
+    }
+
+    if (armed && currentState != lastState) {
+      lastState = currentState;
+      sendState(currentState);
+    }
+  }
+}
