@@ -34,6 +34,8 @@ class SettingsActivity : Activity(), ISettingsView {
     private lateinit var deviceAdapter: DeviceListAdapter
     private var deviceList: List<Device> = emptyList()
 
+    private var devicesListener: com.google.firebase.database.ValueEventListener? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -48,7 +50,22 @@ class SettingsActivity : Activity(), ISettingsView {
         setupRecyclerView()
     }
 
-    override fun onResume() { super.onResume(); fetchUserDevices() }
+    override fun onResume() {
+        super.onResume()
+        fetchUserDevices()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        devicesListener?.let {
+            val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            if (userId != null) {
+                com.google.firebase.database.FirebaseDatabase.getInstance().getReference("devices")
+                    .orderByChild("owner_uid").equalTo(userId).removeEventListener(it)
+            }
+        }
+        devicesListener = null
+    }
 
     private fun initializeViews() {
         addDeviceRow = findViewById(R.id.addDeviceRow)
@@ -78,7 +95,10 @@ class SettingsActivity : Activity(), ISettingsView {
     }
 
     private fun fetchUserDevices() {
-        repository.getUserDevices(
+        // Only fetch if not already listening
+        if (devicesListener != null) return
+
+        devicesListener = repository.getUserDevices(
             onSuccess = { devices ->
                 this.deviceList = devices
                 if (devices.isNotEmpty()) {
@@ -120,8 +140,27 @@ class SettingsActivity : Activity(), ISettingsView {
         val deviceNames = deviceList.map { it.name }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("Select a Device to Remove")
-            .setItems(deviceNames) { _, which -> showRemoveConfirmationDialog(deviceList[which]) }
+            .setItems(deviceNames) { _, which ->
+                val selectedDevice = deviceList[which]
+                if (selectedDevice.status.lowercase() != "online") {
+                    showOfflineWarningDialog(selectedDevice)
+                } else {
+                    showRemoveConfirmationDialog(selectedDevice)
+                }
+            }
             .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showOfflineWarningDialog(device: Device) {
+        AlertDialog.Builder(this)
+            .setTitle("Device is Offline")
+            .setMessage("WARNING: '${device.name}' appears to be Offline.\n\n" +
+                    "If you remove it now, it will NOT receive the reset command. You may be unable to re-pair it without reflashing the code.\n\n" +
+                    "Please ensure the device is powered on and connected to WiFi first.")
+            .setPositiveButton("Force Remove") { _, _ -> showRemoveConfirmationDialog(device) }
+            .setNegativeButton("Cancel", null)
+            .setIcon(android.R.drawable.ic_dialog_alert)
             .show()
     }
 

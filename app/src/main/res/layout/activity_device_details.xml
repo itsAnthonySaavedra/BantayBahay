@@ -112,11 +112,11 @@
                 android:textColor="#666666"
                 android:layout_marginTop="16dp"/>
 
-            <TextView
-                android:id="@+id/tvArmStatus"
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swArmStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Loading..."
+                android:text="System Armed"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@android:color/black"

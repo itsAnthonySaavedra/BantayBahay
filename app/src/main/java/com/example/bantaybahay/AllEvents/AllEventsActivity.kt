@@ -21,10 +21,17 @@ class AllEventsActivity : AppCompatActivity(), AllEventsView {
     private lateinit var progressBar: ProgressBar
     private lateinit var adapter: AllEventsAdapter
     private lateinit var bottomNav: BottomNavigationView
+    private lateinit var tvClearEvents: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_all_events)
+
+        tvClearEvents = findViewById(R.id.tvClearEvents)
+        tvClearEvents.setOnClickListener {
+             // Optional: Add confirmation dialog
+             presenter.clearEvents()
+        }
 
         recyclerView = findViewById(R.id.allEventsRecyclerView)
         tvNoEvents = findViewById(R.id.tvNoEvents)
@@ -70,7 +77,7 @@ class AllEventsActivity : AppCompatActivity(), AllEventsView {
         progressBar.visibility = View.GONE
     }
 
-    override fun showAllEvents(logs: List<Pair<String, String>>) {
+    override fun showAllEvents(logs: List<Triple<String, String, String>>) {
         recyclerView.visibility = View.VISIBLE
         tvNoEvents.visibility = View.GONE
         adapter.setEvents(logs)

@@ -32,15 +32,20 @@ class DeviceListAdapter(
 
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
         val device = devices[position]
+        
         holder.nameTextView.text = device.name
-        holder.statusTextView.text = device.status.replaceFirstChar { it.uppercase() }
+        
+        // Heartbeat Logic: Check if device has been seen in last 30 seconds
+        val currentTime = System.currentTimeMillis() / 1000 // Convert to seconds
+        val isOffline = (currentTime - device.lastSeen) > 30
 
-        val color = if (device.status.equals("online", ignoreCase = true)) {
-            android.graphics.Color.parseColor("#4CAF50")
+        if (isOffline) {
+            holder.statusTextView.text = "Offline"
+            holder.statusIndicator.background.setTint(android.graphics.Color.RED)
         } else {
-            android.graphics.Color.GRAY
+            holder.statusTextView.text = "Online"
+            holder.statusIndicator.background.setTint(android.graphics.Color.parseColor("#4CAF50"))
         }
-        holder.statusIndicator.background.setTint(color)
 
         holder.itemView.setOnClickListener { onDeviceClick(device) }
         holder.itemView.setOnLongClickListener {

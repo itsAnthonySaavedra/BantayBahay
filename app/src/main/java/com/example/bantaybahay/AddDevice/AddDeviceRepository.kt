@@ -56,6 +56,9 @@ class AddDeviceRepository {
               "password": "$password"
             }
         """.trimIndent()
+        
+        println("DEBUG: Sending Token Length: ${token.length}")
+        println("DEBUG: Token Start: ${token.take(10)}... End: ${token.takeLast(10)}")
 
         val body = json.toRequestBody("application/json".toMediaType())
 

@@ -20,7 +20,13 @@ class DeviceDetailsPresenter(
         repository.getDeviceDetails(deviceId) { details ->
             view?.hideLoading()
             if (details != null) {
-                view?.displayDeviceDetails(details.name, details.id, details.status, details.armStatus)
+                val isArmed = details.armStatus == "Armed"
+                view?.displayDeviceDetails(details.name, details.id, details.status, isArmed)
+                
+                // Validation: Check Heartbeat
+                val currentTime = System.currentTimeMillis() / 1000
+                val isOffline = (currentTime - details.lastSeen) > 30 
+                view?.showOfflineWarning(isOffline)
             } else {
                 view?.showError("Device not found.")
                 view?.closeScreen()
@@ -38,6 +44,20 @@ class DeviceDetailsPresenter(
             onFailure = { error ->
                 view?.hideLoading()
                 view?.showError(error)
+            }
+        )
+    }
+
+    fun onArmToggled(isChecked: Boolean) {
+        // Optimistic update not needed as we have real-time listener, but nice for UI responsiveness
+        // view?.showLoading() // Optional, might be annoying on a switch
+        repository.setArmStatus(deviceId, isChecked,
+            onSuccess = { 
+                // Success - Realtime listener will update the switch
+            },
+            onFailure = { error ->
+                view?.showError(error)
+                // Revert switch if failed? For now, real-time listener will correct it eventually
             }
         )
     }

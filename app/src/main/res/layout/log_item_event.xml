@@ -20,12 +20,22 @@
             android:textSize="16sp"/>
 
         <TextView
+            android:id="@+id/tvDeviceName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device Name"
+            android:textStyle="bold"
+            android:textColor="#2196F3"
+            android:textSize="14sp"
+            android:paddingBottom="4dp"/>
+
+        <TextView
             android:id="@+id/tvDetails"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Event details"
             android:textSize="14sp"
-            android:paddingTop="4dp"/>
+            android:paddingTop="0dp"/>
 
     </LinearLayout>
 

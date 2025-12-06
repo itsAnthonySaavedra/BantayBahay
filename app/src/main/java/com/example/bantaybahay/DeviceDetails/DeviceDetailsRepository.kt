@@ -10,7 +10,8 @@ data class DeviceDetails(
     val name: String,
     val id: String,
     val status: String,
-    val armStatus: String // Added arm status
+    val armStatus: String,
+    val lastSeen: Long = 0
 )
 
 class DeviceDetailsRepository {
@@ -25,8 +26,9 @@ class DeviceDetailsRepository {
                         val status = snapshot.child("status").getValue(String::class.java) ?: "Offline"
                         val armCommand = snapshot.child("door_command").getValue(String::class.java) ?: "DISARM"
                         val armStatus = if (armCommand == "ARM") "Armed" else "Disarmed"
+                        val lastSeen = snapshot.child("last_seen").getValue(Long::class.java) ?: 0L
 
-                        callback(DeviceDetails(name, deviceId, status, armStatus))
+                        callback(DeviceDetails(name, deviceId, status, armStatus, lastSeen))
                     } else {
                         callback(null)
                     }
@@ -42,5 +44,12 @@ class DeviceDetailsRepository {
         database.child("devices").child(deviceId).child("name").setValue(newName)
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { e -> onFailure(e.message ?: "Rename failed.") }
+    }
+
+    fun setArmStatus(deviceId: String, isArmed: Boolean, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
+        val command = if (isArmed) "ARM" else "DISARM"
+        database.child("devices").child(deviceId).child("door_command").setValue(command)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { e -> onFailure(e.message ?: "Failed to update arm status.") }
     }
 }

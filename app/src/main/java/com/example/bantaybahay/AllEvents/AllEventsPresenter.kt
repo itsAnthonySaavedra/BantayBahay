@@ -14,7 +14,16 @@ class AllEventsPresenter(
         repository.getAllLogs(this)
     }
 
-    override fun onLogsLoaded(logs: Map<String, String>) {
+    fun clearEvents() {
+        repository.clearAllLogs()
+        // The ValueEventListener in repository will trigger onLogsLoaded with empty list automatically?
+        // Yes, if "logs" is deleted, onDataChange fires. But we might want to manually clear the view to be snappy.
+        // Actually, since we use addValueEventListener in repository, removing the node triggers a callback.
+        // But wait, if we delete "logs", the child loop might just yield nothing. 
+        // Repository implementation: "if (!snapshot.exists()) ... onLogsLoaded(emptyList())". So it should work.
+    }
+
+    override fun onLogsLoaded(logs: List<Triple<String, String, String>>) {
         view.hideLoading()
 
         if (logs.isEmpty()) {
@@ -22,11 +31,7 @@ class AllEventsPresenter(
             return
         }
 
-        val sorted = logs.entries
-            .sortedByDescending { it.key }        // newest → oldest
-            .map { it.toPair() }                  // convert to List<Pair>
-
-        view.showAllEvents(sorted)
+        view.showAllEvents(logs)
     }
 
     override fun onError(message: String) {

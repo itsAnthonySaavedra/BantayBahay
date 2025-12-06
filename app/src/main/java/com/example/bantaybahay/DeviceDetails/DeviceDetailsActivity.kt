@@ -23,7 +23,7 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
     private lateinit var etDeviceName: TextInputEditText
     private lateinit var tvDeviceId: TextView
     private lateinit var tvDeviceStatus: TextView
-    private lateinit var tvArmStatus: TextView
+    private lateinit var swArmStatus: com.google.android.material.switchmaterial.SwitchMaterial
     private lateinit var tvDeviceNameHeader: TextView
     private lateinit var btnSaveChanges: Button
 
@@ -54,7 +54,7 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
         etDeviceName = findViewById(R.id.etDeviceName)
         tvDeviceId = findViewById(R.id.tvDeviceId)
         tvDeviceStatus = findViewById(R.id.tvDeviceStatus)
-        tvArmStatus = findViewById(R.id.tvArmStatus)
+        swArmStatus = findViewById(R.id.swArmStatus)
         tvDeviceNameHeader = findViewById(R.id.tvDeviceNameHeader)
         btnSaveChanges = findViewById(R.id.btnSaveChanges)
     }
@@ -76,6 +76,13 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
                 btnSaveChanges.visibility = if (s.toString() != originalDeviceName) View.VISIBLE else View.GONE
             }
         })
+
+        swArmStatus.setOnCheckedChangeListener { _, isChecked ->
+            // Only trigger if pressed by user to avoid infinite loops from programmatic updates
+            if (swArmStatus.isPressed) {
+                presenter.onArmToggled(isChecked)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -86,18 +93,39 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
     override fun showLoading() { loadingDialog.show("Please wait...") }
     override fun hideLoading() { loadingDialog.dismiss() }
 
-    override fun displayDeviceDetails(name: String, id: String, status: String, armStatus: String) {
+    override fun displayDeviceDetails(name: String, id: String, status: String, isArmed: Boolean) {
         originalDeviceName = name
         tvDeviceNameHeader.text = name
         etDeviceName.setText(name)
         tvDeviceId.text = id
         tvDeviceStatus.text = status.replaceFirstChar { it.uppercase() }
-        tvArmStatus.text = armStatus
+        
+        // Update Switch without triggering listener logic (handled by isPressed check, but just to be safe)
+        if (swArmStatus.isChecked != isArmed) {
+            swArmStatus.isChecked = isArmed
+        }
     }
 
     override fun showSaveSuccess(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         btnSaveChanges.visibility = View.GONE // Hide button after successful save
+    }
+
+    override fun showOfflineWarning(isOffline: Boolean) {
+        val warningBanner = findViewById<TextView>(R.id.tvDeviceStatus) // Using status text for now
+        
+        if (isOffline) {
+            warningBanner.text = "OFFLINE - Tap to Re-Pair"
+            warningBanner.setTextColor(android.graphics.Color.RED)
+            warningBanner.setOnClickListener {
+                // Navigate to Pair Screen with ID pre-filled
+                val intent = android.content.Intent(this, com.example.bantaybahay.AddDevice.AddDeviceActivity::class.java)
+                startActivity(intent)
+            }
+        } else {
+            warningBanner.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+            warningBanner.setOnClickListener(null) // Remove click listener
+        }
     }
 
     override fun showError(message: String) { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }

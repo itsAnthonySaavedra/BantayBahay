@@ -137,7 +137,7 @@ class DashboardActivity : AppCompatActivity(), DashboardView {
         runOnUiThread {
             val sorted = logs.entries
                 .sortedByDescending { it.key }
-                .take(10)
+                .take(5)
 
             adapter.setLogs(sorted.map { it.toPair() })
         }

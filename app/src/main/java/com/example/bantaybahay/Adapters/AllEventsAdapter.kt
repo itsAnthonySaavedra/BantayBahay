@@ -9,9 +9,10 @@ import com.example.bantaybahay.R
 
 class AllEventsAdapter : RecyclerView.Adapter<AllEventsAdapter.ViewHolder>() {
 
-    private val items = mutableListOf<Pair<String, String>>()
+    // Triple: Timestamp, Message, DeviceName
+    private val items = mutableListOf<Triple<String, String, String>>()
 
-    fun setEvents(events: List<Pair<String, String>>) {
+    fun setEvents(events: List<Triple<String, String, String>>) {
         items.clear()
         items.addAll(events)
         notifyDataSetChanged()
@@ -20,6 +21,7 @@ class AllEventsAdapter : RecyclerView.Adapter<AllEventsAdapter.ViewHolder>() {
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvTime: TextView = itemView.findViewById(R.id.tvTime)
         val tvDetails: TextView = itemView.findViewById(R.id.tvDetails)
+        val tvDeviceName: TextView = itemView.findViewById(R.id.tvDeviceName)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -29,7 +31,7 @@ class AllEventsAdapter : RecyclerView.Adapter<AllEventsAdapter.ViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val (time, message) = items[position]
+        val (time, message, deviceName) = items[position]
 
         // Split timestamp into date + time parts
         val parts = time.split("_")
@@ -41,6 +43,7 @@ class AllEventsAdapter : RecyclerView.Adapter<AllEventsAdapter.ViewHolder>() {
 
         holder.tvTime.text = "$date $formattedTime"
         holder.tvDetails.text = message
+        holder.tvDeviceName.text = deviceName
     }
 
     override fun getItemCount() = items.size
