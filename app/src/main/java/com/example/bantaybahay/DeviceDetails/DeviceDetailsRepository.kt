@@ -11,7 +11,9 @@ data class DeviceDetails(
     val id: String,
     val status: String,
     val armStatus: String,
-    val lastSeen: Long = 0
+    val lastSeen: Long = 0,
+    val autoArmEnabled: Boolean = false,
+    val autoArmTime: String = "--:--"
 )
 
 class DeviceDetailsRepository {
@@ -27,8 +29,12 @@ class DeviceDetailsRepository {
                         val armCommand = snapshot.child("door_command").getValue(String::class.java) ?: "DISARM"
                         val armStatus = if (armCommand == "ARM") "Armed" else "Disarmed"
                         val lastSeen = snapshot.child("last_seen").getValue(Long::class.java) ?: 0L
+                        
+                        // Auto-Arm Settings
+                        val autoArmEnabled = snapshot.child("settings").child("auto_arm").child("enabled").getValue(Boolean::class.java) ?: false
+                        val autoArmTime = snapshot.child("settings").child("auto_arm").child("time").getValue(String::class.java) ?: "--:--"
 
-                        callback(DeviceDetails(name, deviceId, status, armStatus, lastSeen))
+                        callback(DeviceDetails(name, deviceId, status, armStatus, lastSeen, autoArmEnabled, autoArmTime))
                     } else {
                         callback(null)
                     }
@@ -51,5 +57,16 @@ class DeviceDetailsRepository {
         database.child("devices").child(deviceId).child("door_command").setValue(command)
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { e -> onFailure(e.message ?: "Failed to update arm status.") }
+    }
+    
+    fun saveAutoArmSettings(deviceId: String, enabled: Boolean, time: String, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
+        val updates = mapOf(
+            "devices/$deviceId/settings/auto_arm/enabled" to enabled,
+            "devices/$deviceId/settings/auto_arm/time" to time
+        )
+        
+        database.updateChildren(updates)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { e -> onFailure(e.message ?: "Failed to save auto-arm settings.") }
     }
 }

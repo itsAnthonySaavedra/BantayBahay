@@ -26,6 +26,10 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
     private lateinit var swArmStatus: com.google.android.material.switchmaterial.SwitchMaterial
     private lateinit var tvDeviceNameHeader: TextView
     private lateinit var btnSaveChanges: Button
+    
+    // New UI Elements
+    private lateinit var swAutoArm: com.google.android.material.switchmaterial.SwitchMaterial
+    private lateinit var tvAutoArmTime: TextView
 
     private var originalDeviceName: String = ""
 
@@ -57,6 +61,9 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
         swArmStatus = findViewById(R.id.swArmStatus)
         tvDeviceNameHeader = findViewById(R.id.tvDeviceNameHeader)
         btnSaveChanges = findViewById(R.id.btnSaveChanges)
+        
+        swAutoArm = findViewById(R.id.swAutoArm)
+        tvAutoArmTime = findViewById(R.id.tvAutoArmTime)
     }
 
     private fun setupListeners() {
@@ -78,10 +85,19 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
         })
 
         swArmStatus.setOnCheckedChangeListener { _, isChecked ->
-            // Only trigger if pressed by user to avoid infinite loops from programmatic updates
             if (swArmStatus.isPressed) {
                 presenter.onArmToggled(isChecked)
             }
+        }
+        
+        swAutoArm.setOnCheckedChangeListener { _, isChecked ->
+            if (swAutoArm.isPressed) {
+                presenter.onAutoArmToggled(isChecked)
+            }
+        }
+        
+        tvAutoArmTime.setOnClickListener {
+            presenter.onAutoArmTimeClicked()
         }
     }
 
@@ -93,22 +109,30 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
     override fun showLoading() { loadingDialog.show("Please wait...") }
     override fun hideLoading() { loadingDialog.dismiss() }
 
-    override fun displayDeviceDetails(name: String, id: String, status: String, isArmed: Boolean) {
+    override fun displayDeviceDetails(name: String, id: String, status: String, isArmed: Boolean, autoArmEnabled: Boolean, autoArmTime: String) {
         originalDeviceName = name
         tvDeviceNameHeader.text = name
         etDeviceName.setText(name)
         tvDeviceId.text = id
         tvDeviceStatus.text = status.replaceFirstChar { it.uppercase() }
         
-        // Update Switch without triggering listener logic (handled by isPressed check, but just to be safe)
         if (swArmStatus.isChecked != isArmed) {
             swArmStatus.isChecked = isArmed
         }
+        
+        // Auto-Arm Updates
+        if (swAutoArm.isChecked != autoArmEnabled) {
+            swAutoArm.isChecked = autoArmEnabled
+        }
+        tvAutoArmTime.text = "Time: $autoArmTime"
     }
 
     override fun showSaveSuccess(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-        btnSaveChanges.visibility = View.GONE // Hide button after successful save
+        // Determine layout logic if needed, usually we hide buttons etc.
+        if (message.contains("renamed")) {
+             btnSaveChanges.visibility = View.GONE
+        }
     }
 
     override fun showOfflineWarning(isOffline: Boolean) {
@@ -126,6 +150,24 @@ class DeviceDetailsActivity : Activity(), IDeviceDetailsView {
             warningBanner.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
             warningBanner.setOnClickListener(null) // Remove click listener
         }
+    }
+    
+    override fun showTimePicker(currentTime: String) {
+        val calendar = java.util.Calendar.getInstance()
+        var hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+        var minute = calendar.get(java.util.Calendar.MINUTE)
+
+        if (currentTime != "--:--" && currentTime.contains(":")) {
+            val parts = currentTime.split(":")
+            if (parts.size == 2) {
+                hour = parts[0].toIntOrNull() ?: hour
+                minute = parts[1].toIntOrNull() ?: minute
+            }
+        }
+
+        android.app.TimePickerDialog(this, { _, selectedHour, selectedMinute ->
+            presenter.onTimeSelected(selectedHour, selectedMinute)
+        }, hour, minute, false).show() // false for AM/PM mode
     }
 
     override fun showError(message: String) { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }

@@ -111,7 +111,7 @@ String exchangeCustomToken(String customToken) {
 }
 
 // -------------------------------------------------------------------
-// 🔧 MANUAL REFRESH TOKEN EXCHANGE (New Stability Fix)
+// 🔧 MANUAL REFRESH TOKEN EXCHANGE (Stability Fix with Retry)
 // -------------------------------------------------------------------
 String exchangeRefreshToken(String refreshToken) {
   Serial.println("Refreshing ID Token...");
@@ -120,9 +120,11 @@ String exchangeRefreshToken(String refreshToken) {
   
   const char* host = "securetoken.googleapis.com";
   
-  if (!client.connect(host, 443)) {
-     Serial.println("Auth Host Connection Failed");
-     return "";
+  for (int i = 0; i < 3; i++) {
+      if (client.connect(host, 443)) break;
+      Serial.println("Auth Host Connection Failed (" + String(i+1) + "/3)");
+      delay(1000);
+      if (i == 2) return "";
   }
   
   String url = "/v1/token?key=" + String(API_KEY);
@@ -138,7 +140,7 @@ String exchangeRefreshToken(String refreshToken) {
   // Wait
   unsigned long timeout = millis();
   while (client.connected() && !client.available()) {
-    if (millis() - timeout > 5000) return "";
+    if (millis() - timeout > 10000) return ""; // Increased timeout
     delay(10);
   }
   
@@ -160,8 +162,6 @@ String exchangeRefreshToken(String refreshToken) {
       const char* newRefresh = doc["refresh_token"];
       if (newRefresh) {
          savedRefreshToken = String(newRefresh); 
-         // Note: We should save this mostly, but for now in RAM is okay until next reboot (logic holds)
-         // Ideally save to config immediately if it changed, but let's keep it simple.
       }
       return String(newIdToken);
   } else {
@@ -224,14 +224,8 @@ bool loadConfig() {
 bool connectToWiFi(String ssid, String pass) {
   Serial.println("Connecting to WiFi...");
   Serial.println("SSID: [" + ssid + "]");
-  Serial.println("Pass: [" + pass + "]"); // User requested visibility
   
-  // 1. Force Disconnect & Reset Radio
-  WiFi.disconnect(true);  // Erase NVS credentials
-  WiFi.mode(WIFI_OFF);    // Turn off radio
-  delay(100);
-  
-  // 2. Start Fresh
+  // OPTIMIZED: Removed aggressive disconnect/reset which wipes NVS
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid.c_str(), pass.c_str());
 
@@ -243,6 +237,7 @@ bool connectToWiFi(String ssid, String pass) {
   Serial.println();
   
   if (WiFi.status() == WL_CONNECTED) {
+      delay(2000); // Allow stack to settle
       Serial.println("WiFi Connected!");
       Serial.println("IP: " + WiFi.localIP().toString());
       return true;
@@ -309,19 +304,17 @@ bool initFirebase(String deviceId, String customToken) {
 // 🛜 AP Endpoints
 // -------------------------------------------------------------------
 void handlePair() {
-  Serial.println("Received pairing request!"); // DEBUG
+  Serial.println("Received pairing request!"); 
   
   if (server.method() != HTTP_POST) {
-    Serial.println("Error: Not POST method");
     server.send(405, "application/json", "{\"status\":\"bad_method\"}");
     return;
   }
   String body = server.arg("plain");
-  Serial.println("Body: " + body); // DEBUG
+  Serial.println("Body: " + body);
 
-  DynamicJsonDocument doc(4096); // HEAP
+  DynamicJsonDocument doc(4096); 
   if (deserializeJson(doc, body)) {
-    Serial.println("Error: JSON parsing failed");
     server.send(400, "application/json", "{\"status\":\"bad_json\"}");
     return;
   }
@@ -368,7 +361,7 @@ String getTimeString() {
 // 🔥 Send Logic
 // -------------------------------------------------------------------
 void sendState(String state) {
-  // Re-auth if needed (simple token refresh check could go here)
+  // Re-auth if needed
   if (!Firebase.ready()) {
      initFirebase(savedDeviceId, savedCustomToken);
   }
@@ -380,6 +373,49 @@ void sendState(String state) {
   Firebase.RTDB.setString(&fbdo, "/devices/" + savedDeviceId + "/logs/" + ts, state);
   Firebase.RTDB.setString(&fbdo, "/events/" + savedDeviceId + "/" + ts, state);
   Serial.println("Sent: " + state);
+}
+
+// -------------------------------------------------------------------
+// ⏰ Auto-Arm Logic
+// -------------------------------------------------------------------
+unsigned long lastAutoArmCheck = 0;
+
+void checkAutoArm() {
+    if (millis() - lastAutoArmCheck > 10000) { // Check every 10s
+        lastAutoArmCheck = millis();
+        
+        if (!Firebase.ready()) return;
+        
+        time_t now = time(nullptr);
+        struct tm *timeinfo = localtime(&now);
+        if (timeinfo->tm_year < 120) return; // NTP not ready
+        
+        // 1. Get Schedule from Firebase
+        if (Firebase.RTDB.getBool(&fbdo, "/devices/" + savedDeviceId + "/settings/auto_arm/enabled")) {
+             bool enabled = fbdo.boolData();
+             if (enabled) {
+                 if (Firebase.RTDB.getString(&fbdo, "/devices/" + savedDeviceId + "/settings/auto_arm/time")) {
+                     String schedTime = fbdo.stringData();
+                     
+                     // Format Current Time HH:MM
+                     char buffer[6];
+                     strftime(buffer, 6, "%H:%M", timeinfo);
+                     String currentTime = String(buffer);
+                     
+                     if (currentTime == schedTime) {
+                         // TRIGGER ARM
+                         // Check if already armed to prevent redundant ops
+                          if (Firebase.RTDB.getString(&fbdo, "/devices/" + savedDeviceId + "/door_command")) {
+                              if (fbdo.stringData() != "ARM") {
+                                  Serial.println("⏰ Auto-Arm Triggered! Setting ARM...");
+                                  Firebase.RTDB.setString(&fbdo, "/devices/" + savedDeviceId + "/door_command", "ARM");
+                              }
+                          }
+                     }
+                 }
+             }
+        }
+    }
 }
 
 // -------------------------------------------------------------------
@@ -408,19 +444,15 @@ void setup() {
 
 String lastState = "";
 unsigned long lastTime = 0;
-unsigned long lastHeartbeat = 0; // Heartbeat timer
+unsigned long lastHeartbeat = 0; 
 
 void sendHeartbeat() {
   if (millis() - lastHeartbeat > 15000) { // Every 15 seconds
     lastHeartbeat = millis();
-    
-    // Ensure properly authenticated
     if (!Firebase.ready()) return;
 
     time_t now = time(nullptr);
-    if (now > 100000) { // Ensure time is set (greater than 1970)
-       // Write Unix Timestamp to "last_seen"
-       // This allows the App to calculate "Seconds since active"
+    if (now > 100000) { 
        Firebase.RTDB.setInt(&fbdo, "/devices/" + savedDeviceId + "/last_seen", (int)now);
        Serial.println("❤️ Heartbeat Sent: " + String((int)now));
     }
@@ -434,16 +466,19 @@ void loop() {
     return;
   }
 
-  // 1. Send Heartbeat (Background Task)
+  // 1. Send Heartbeat
   sendHeartbeat();
+  
+  // 2. Check Auto-Arm Schedule
+  checkAutoArm();
 
-  // 2. Check Sensor (Sensor Task)
+  // 3. Check Sensor 
   if (millis() - lastTime > 300) {
     lastTime = millis();
     String currentState = (digitalRead(reedPin) == LOW) ? "Closed" : "Open";
 
     // Check Command
-    bool armed = false; // Restored declaration
+    bool armed = false;
     if (Firebase.RTDB.getString(&fbdo, "/devices/" + savedDeviceId + "/door_command")) {
       String cmd = fbdo.stringData();
       if (cmd == "ARM") {
@@ -451,7 +486,7 @@ void loop() {
       } else if (cmd == "RESET") {
           Serial.println("Received RESET command. Wiping config...");
           SPIFFS.remove(CONFIG_FILE);
-          Firebase.RTDB.deleteNode(&fbdo, "/devices/" + savedDeviceId + "/door_command"); // Clear cmd
+          Firebase.RTDB.deleteNode(&fbdo, "/devices/" + savedDeviceId + "/door_command"); 
           delay(1000);
           ESP.restart();
       }
